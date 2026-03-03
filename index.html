@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fruits 5x5 Slots (Demo)</title>
+  <style>
+    :root{
+      --bg:#10131a;
+      --panel:#171c26;
+      --cell:#232a3a;
+      --text:#e9eefc;
+      --muted:#9aa6c3;
+      --accent:#5ee6a8;
+      --danger:#ff5c7a;
+      --gold:#ffd36b;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background: radial-gradient(1200px 600px at 50% -10%, #28304a 0%, var(--bg) 55%);
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      padding:18px;
+    }
+    .app{
+      width:min(720px, 100%);
+      display:grid;
+      gap:14px;
+    }
+    .topbar, .bottombar{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      padding:12px 14px;
+      box-shadow: var(--shadow);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .title{
+      font-weight:700;
+      letter-spacing:.3px;
+    }
+    .stats{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      color:var(--muted);
+      font-size:14px;
+    }
+    .pill{
+      padding:6px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .pill strong{color:var(--text)}
+    .board-wrap{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+    .board{
+      display:grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap:10px;
+      user-select:none;
+    }
+    .cell{
+      background: radial-gradient(120px 80px at 30% 20%, rgba(255,255,255,.12), rgba(255,255,255,0) 55%),
+                  linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.06));
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;
+      aspect-ratio: 1 / 1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size: clamp(22px, 4.5vw, 40px);
+      position:relative;
+      overflow:hidden;
+    }
+    .cell .small{
+      position:absolute;
+      bottom:8px;
+      right:8px;
+      font-size:12px;
+      color:rgba(255,255,255,.7);
+    }
+    .cell.mult{
+      border-color: rgba(255, 211, 107, .45);
+      box-shadow: inset 0 0 0 1px rgba(255, 211, 107, .15);
+    }
+    .cell.mult .badge{
+      font-size: clamp(14px, 3.2vw, 20px);
+      font-weight:900;
+      color:#1a1406;
+      background: linear-gradient(180deg, #ffe7a6, #ffcc4e);
+      padding:6px 10px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,.18);
+      text-shadow:none;
+    }
+    .controls{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      width:100%;
+    }
+    .group{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    button{
+      appearance:none;
+      border:none;
+      cursor:pointer;
+      color:var(--text);
+      background: rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.10);
+      padding:10px 12px;
+      border-radius:12px;
+      font-weight:700;
+      transition: transform .05s ease, background .15s ease, opacity .15s ease;
+    }
+    button:active{transform: translateY(1px)}
+    button.primary{
+      background: linear-gradient(180deg, rgba(94,230,168,.95), rgba(44,175,120,.95));
+      border-color: rgba(0,0,0,.25);
+      color:#06150f;
+    }
+    button.danger{
+      background: linear-gradient(180deg, rgba(255,92,122,.95), rgba(210,49,83,.95));
+      border-color: rgba(0,0,0,.25);
+      color:#1b0409;
+    }
+    button:disabled{opacity:.55; cursor:not-allowed}
+    .bet{
+      display:flex; align-items:center; gap:8px;
+      color:var(--muted);
+      font-size:14px;
+    }
+    .bet strong{color:var(--text)}
+    .spin-anim .cell{
+      animation: wobble .55s ease-in-out;
+    }
+    @keyframes wobble{
+      0%{transform: translateY(0); filter: blur(0)}
+      20%{transform: translateY(-2px); filter: blur(.3px)}
+      45%{transform: translateY(2px); filter: blur(.2px)}
+      70%{transform: translateY(-1px); filter: blur(.2px)}
+      100%{transform: translateY(0); filter: blur(0)}
+    }
+    .log{
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.35;
+    }
+    .log b{color:var(--text)}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="title">Fruits 5×5 Slots (Demo)</div>
+      <div class="stats">
+        <div class="pill">Баланс: <strong id="balance">1000</strong></div>
+        <div class="pill">Ставка: <strong id="bet">50</strong></div>
+        <div class="pill">Выигрыш: <strong id="win">0</strong></div>
+        <div class="pill">Множитель поля: <strong id="fieldMult">1x</strong></div>
+      </div>
+    </div>
+
+    <div class="board-wrap">
+      <div id="board" class="board"></div>
+      <div class="log" style="margin-top:12px">
+        Выплаты: совпадения “ways” слева направо (3/4/5 одинаковых символов). Множители (2x…100x) усиливают общий выигрыш (берём максимальный).
+      </div>
+    </div>
+
+    <div class="bottombar">
+      <div class="controls">
+        <div class="group">
+          <button id="betMinus">- Ставка</button>
+          <button id="betPlus">+ Ставка</button>
+          <button id="betMax">MAX</button>
+        </div>
+        <div class="group">
+          <button id="spin" class="primary">SPIN</button>
+          <button id="auto">AUTO: OFF</button>
+          <button id="reset" class="danger">RESET</button>
+        </div>
+      </div>
+      <div class="bet">
+        <span>Шаг ставки:</span> <strong id="betStep">10</strong>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // --- RNG (crypto) ---
+  function rand01(){
+    const a = new Uint32Array(1);
+    crypto.getRandomValues(a);
+    return a[0] / 2**32;
+  }
+  function pickWeighted(items){
+    const total = items.reduce((s,x)=>s+x.w,0);
+    let r = rand01() * total;
+    for(const it of items){
+      r -= it.w;
+      if(r <= 0) return it;
+    }
+    return items[items.length - 1];
+  }
+
+  // --- Symbols ---
+  // type: 'fruit' or 'mult'
+  const FRUITS = [
+    { id:'grapes',  label:'🍇', w: 18 },
+    { id:'water',   label:'🍉', w: 16 },
+    { id:'banana',  label:'🍌', w: 16 },
+    { id:'apple',   label:'🍎', w: 15 },
+    { id:'kiwi',    label:'🥝', w: 14 },
+    { id:'candy',   label:'🍬', w: 10 }, // просто как обычный символ
+  ].map(x => ({...x, type:'fruit'}));
+
+  const MULTS = [
+    { id:'m2',   value:2,   w: 5.0 },
+    { id:'m3',   value:3,   w: 3.5 },
+    { id:'m5',   value:5,   w: 2.5 },
+    { id:'m8',   value:8,   w: 1.8 },
+    { id:'m10',  value:10,  w: 1.3 },
+    { id:'m12',  value:12,  w: 1.0 },
+    { id:'m15',  value:15,  w: 0.8 },
+    { id:'m20',  value:20,  w: 0.55 },
+    { id:'m25',  value:25,  w: 0.40 },
+    { id:'m50',  value:50,  w: 0.18 },
+    { id:'m100', value:100, w: 0.08 },
+  ].map(x => ({...x, type:'mult', label: x.value + 'x'}));
+
+  // Чем меньше вес множителей, тем реже они выпадают.
+  const SYMBOL_POOL = [
+    ...FRUITS.map(s => ({...s})),
+    ...MULTS.map(s => ({...s})),
+  ];
+
+  // --- Paytable (коэффициенты на ставку за 1 "way") ---
+  // Итог = bet * ways * pay
+  const PAY = {
+    grapes: {3: 0.25, 4: 0.6,  5: 1.5},
+    water:  {3: 0.22, 4: 0.55, 5: 1.35},
+    banana: {3: 0.20, 4: 0.50, 5: 1.25},
+    apple:  {3: 0.18, 4: 0.45, 5: 1.15},
+    kiwi:   {3: 0.16, 4: 0.40, 5: 1.05},
+    candy:  {3: 0.28, 4: 0.70, 5: 1.8},
+  };
+
+  // --- State ---
+  const ROWS = 5, COLS = 5;
+  let balance = 1000;
+  let bet = 50;
+  const betStep = 10;
+  let auto = false;
+  let spinning = false;
+
+  // Grid stored as [col][row]
+  let grid = makeGrid();
+
+  // --- UI refs ---
+  const elBoard = document.getElementById('board');
+  const elBalance = document.getElementById('balance');
+  const elBet = document.getElementById('bet');
+  const elWin = document.getElementById('win');
+  const elFieldMult = document.getElementById('fieldMult');
+  const btnSpin = document.getElementById('spin');
+  const btnAuto = document.getElementById('auto');
+  const btnMinus = document.getElementById('betMinus');
+  const btnPlus = document.getElementById('betPlus');
+  const btnMax = document.getElementById('betMax');
+  const btnReset = document.getElementById('reset');
+  document.getElementById('betStep').textContent = betStep;
+
+  function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+  function render(){
+    elBalance.textContent = String(balance);
+    elBet.textContent = String(bet);
+    elBoard.innerHTML = '';
+
+    // board is grid-template-columns: repeat(5...)
+    // render row-major for natural reading; but access grid[col][row]
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const s = grid[c][r];
+        const cell = document.createElement('div');
+        cell.className = 'cell' + (s.type === 'mult' ? ' mult' : '');
+        if(s.type === 'mult'){
+          const badge = document.createElement('div');
+          badge.className = 'badge';
+          badge.textContent = s.label;
+          cell.appendChild(badge);
+        } else {
+          cell.textContent = s.label;
+          const small = document.createElement('div');
+          small.className = 'small';
+          small.textContent = '';
+          cell.appendChild(small);
+        }
+        elBoard.appendChild(cell);
+      }
+    }
+  }
+
+  function makeGrid(){
+    const g = Array.from({length: COLS}, () => Array.from({length: ROWS}, () => null));
+    for(let c=0;c<COLS;c++){
+      for(let r=0;r<ROWS;r++){
+        // Для большего сходства с “в центре множители” можно чуть повысить шанс множителей в центре:
+        const centerBoost = (c>=1 && c<=3 && r>=1 && r<=3) ? 1.25 : 1.0;
+        const pool = SYMBOL_POOL.map(x => ({...x, w: x.w * (x.type === 'mult' ? centerBoost : 1)}));
+        g[c][r] = pickWeighted(pool);
+      }
+    }
+    return g;
+  }
+
+  function calcFieldMultiplier(g){
+    // Берём максимальный множитель на поле (чтобы не улетало в космос)
+    let m = 1;
+    for(let c=0;c<COLS;c++){
+      for(let r=0;r<ROWS;r++){
+        const s = g[c][r];
+        if(s.type === 'mult') m = Math.max(m, s.value);
+      }
+    }
+    return m;
+  }
+
+  function evaluateWaysWin(g, bet){
+    // "Ways": для каждого фрукта считаем, сколько его на каждом барабане (колонке).
+    // Совпадение слева направо считается, пока на очередном барабане есть хотя бы 1 такой символ.
+    // Ways для длины k = product(counts[0..k-1])
+    let total = 0;
+
+    for(const fruit of FRUITS){
+      const id = fruit.id;
+      const counts = [];
+      for(let c=0;c<COLS;c++){
+        let cnt = 0;
+        for(let r=0;r<ROWS;r++){
+          if(g[c][r].type === 'fruit' && g[c][r].id === id) cnt++;
+        }
+        counts.push(cnt);
+      }
+
+      // найдём лучшую длину 5->3
+      for(let k=5;k>=3;k--){
+        let ok = true;
+        let ways = 1;
+        for(let c=0;c<k;c++){
+          if(counts[c] <= 0){ ok = false; break; }
+          ways *= counts[c];
+        }
+        if(ok){
+          const pay = PAY[id][k] ?? 0;
+          total += bet * ways * pay;
+          break; // берём максимальную длину для данного символа
+        }
+      }
+    }
+
+    // округлим до целого (как в большинстве игр)
+    return Math.floor(total);
+  }
+
+  async function spinOnce(){
+    if(spinning) return;
+    if(balance < bet) return;
+
+    spinning = true;
+    btnSpin.disabled = true;
+    balance -= bet;
+    elWin.textContent = '0';
+    elBalance.textContent = String(balance);
+
+    // animation
+    elBoard.classList.add('spin-anim');
+    await new Promise(res => setTimeout(res, 520));
+
+    grid = makeGrid();
+    render();
+
+    const baseWin = evaluateWaysWin(grid, bet);
+    const fieldMult = calcFieldMultiplier(grid);
+    const win = Math.floor(baseWin * fieldMult);
+
+    elFieldMult.textContent = fieldMult + 'x';
+    elWin.textContent = String(win);
+
+    balance += win;
+    elBalance.textContent = String(balance);
+
+    elBoard.classList.remove('spin-anim');
+
+    spinning = false;
+    btnSpin.disabled = false;
+
+    if(auto){
+      // небольшая пауза между автоспинами
+      await new Promise(res => setTimeout(res, 350));
+      if(auto && balance >= bet) spinOnce();
+      if(auto && balance < bet){
+        auto = false;
+        btnAuto.textContent = 'AUTO: OFF';
+      }
+    }
+  }
+
+  // --- Controls ---
+  btnSpin.addEventListener('click', spinOnce);
+
+  btnAuto.addEventListener('click', () => {
+    auto = !auto;
+    btnAuto.textContent = auto ? 'AUTO: ON' : 'AUTO: OFF';
+    if(auto && !spinning){
+      if(balance >= bet) spinOnce();
+      else {
+        auto = false;
+        btnAuto.textContent = 'AUTO: OFF';
+      }
+    }
+  });
+
+  btnMinus.addEventListener('click', () => {
+    bet = clamp(bet - betStep, betStep, 1000000);
+    elBet.textContent = String(bet);
+  });
+  btnPlus.addEventListener('click', () => {
+    bet = clamp(bet + betStep, betStep, 1000000);
+    elBet.textContent = String(bet);
+  });
+  btnMax.addEventListener('click', () => {
+    bet = Math.max(betStep, balance); // ставим весь баланс
+    elBet.textContent = String(bet);
+  });
+  btnReset.addEventListener('click', () => {
+    auto = false;
+    btnAuto.textContent = 'AUTO: OFF';
+    spinning = false;
+    btnSpin.disabled = false;
+    balance = 1000;
+    bet = 50;
+    grid = makeGrid();
+    elWin.textContent = '0';
+    elFieldMult.textContent = '1x';
+    render();
+  });
+
+  // init
+  render();
+  elBalance.textContent = String(balance);
+  elBet.textContent = String(bet);
+  elWin.textContent = '0';
+  elFieldMult.textContent = '1x';
+})();
+</script>
+</body>
+</html>
